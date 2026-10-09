@@ -1,5 +1,7 @@
+
 package com.duoc.auth_server.security;
 
+import com.duoc.auth_server.controller.AuthController;
 import com.duoc.auth_server.service.JwtTokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
@@ -16,74 +18,72 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-//toma el usuario autenticado de github y genera el jwt
+//toma el usuario autenticado de github y genera el token jwt
 @Component
 public class OAuth2LoginSuccessHandler
-        implements AuthenticationSuccessHandler {
+                implements AuthenticationSuccessHandler {
 
-    private final JwtTokenService jwtTokenService;
-    private final ObjectMapper objectMapper;
+        private final JwtTokenService jwtTokenService;
+        private final ObjectMapper objectMapper;
 
-    public OAuth2LoginSuccessHandler(
-            JwtTokenService jwtTokenService,
-            ObjectMapper objectMapper) {
+        public OAuth2LoginSuccessHandler(
+                        JwtTokenService jwtTokenService,
+                        ObjectMapper objectMapper) {
+                this.jwtTokenService = jwtTokenService;
+                this.objectMapper = objectMapper;
+        }
 
-        this.jwtTokenService = jwtTokenService;
-        this.objectMapper = objectMapper;
-    }
+        @Override
+        public void onAuthenticationSuccess(
+                        HttpServletRequest request,
+                        HttpServletResponse response,
+                        Authentication authentication)
+                        throws IOException, ServletException {
 
-    @Override
-    public void onAuthenticationSuccess(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            Authentication authentication)
-            throws IOException, ServletException {
+                var session = request.getSession(false);
 
-        OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
+                String channel = session == null
+                                ? null
+                                : (String) session.getAttribute(
+                                                AuthController.CHANNEL_SESSION_KEY);
 
-        OAuth2User githubUser = oauthToken.getPrincipal();
+                if (channel == null) {
+                        response.sendError(
+                                        HttpServletResponse.SC_BAD_REQUEST,
+                                        "No se especificó el canal de acceso.");
+                        return;
+                }
 
-        String githubLogin = githubUser.getAttribute("login");
+                session.removeAttribute(
+                                AuthController.CHANNEL_SESSION_KEY);
 
-        String email = githubUser.getAttribute("email");
+                OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
 
-        String name = githubUser.getAttribute("name");
+                OAuth2User githubUser = oauthToken.getPrincipal();
 
-        String jwt = jwtTokenService.generateToken(
-                githubLogin,
-                email,
-                name);
+                String githubLogin = githubUser.getAttribute("login");
+                String email = githubUser.getAttribute("email");
+                String name = githubUser.getAttribute("name");
 
-        Map<String, Object> tokenResponse = new LinkedHashMap<>();
+                String jwt = jwtTokenService.generateToken(
+                                githubLogin,
+                                email,
+                                name,
+                                channel);
 
-        tokenResponse.put(
-                "tokenType",
-                "Bearer");
+                Map<String, Object> tokenResponse = new LinkedHashMap<>();
+                tokenResponse.put("tokenType", "Bearer");
+                tokenResponse.put("accessToken", jwt);
+                tokenResponse.put("expiresIn", 3600);
+                tokenResponse.put("githubUser", githubLogin);
+                tokenResponse.put("email", email);
+                tokenResponse.put("channel", channel);
 
-        tokenResponse.put(
-                "accessToken",
-                jwt);
+                response.setStatus(HttpServletResponse.SC_OK);
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        tokenResponse.put(
-                "expiresIn",
-                3600);
-
-        tokenResponse.put(
-                "githubUser",
-                githubLogin);
-
-        tokenResponse.put(
-                "email",
-                email);
-
-        response.setStatus(
-                HttpServletResponse.SC_OK);
-
-        response.setContentType(
-                MediaType.APPLICATION_JSON_VALUE);
-
-        objectMapper.writeValue(
-                response.getOutputStream(),
-                tokenResponse);
-    }
+                objectMapper.writeValue(
+                                response.getOutputStream(),
+                                tokenResponse);
+        }
 }

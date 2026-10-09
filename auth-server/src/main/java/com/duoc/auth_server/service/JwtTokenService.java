@@ -1,3 +1,4 @@
+
 package com.duoc.auth_server.service;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -8,14 +9,20 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
-//crea el jwt
+//genera el token
 @Service
 public class JwtTokenService {
 
     private final JwtEncoder jwtEncoder;
     private final String issuer;
     private final long expirationSeconds;
+
+    private static final Map<String, String> CHANNEL_ROLES = Map.of(
+            "WEB", "ROLE_WEB",
+            "MOBILE", "ROLE_MOBILE",
+            "ATM", "ROLE_ATM");
 
     public JwtTokenService(
             JwtEncoder jwtEncoder,
@@ -30,18 +37,26 @@ public class JwtTokenService {
     public String generateToken(
             String githubLogin,
             String email,
-            String name) {
+            String name,
+            String channel) {
+
+        String role = CHANNEL_ROLES.get(
+                channel == null ? "" : channel.toUpperCase());
+
+        if (role == null) {
+            throw new IllegalArgumentException(
+                    "Canal no válido para generar el JWT");
+        }
 
         Instant now = Instant.now();
 
         JwtClaimsSet.Builder claimsBuilder = JwtClaimsSet.builder()
                 .issuer(issuer)
                 .issuedAt(now)
-                .expiresAt(
-                        now.plusSeconds(expirationSeconds))
+                .expiresAt(now.plusSeconds(expirationSeconds))
                 .subject(githubLogin)
                 .claim("provider", "github")
-                .claim("roles", List.of("ROLE_WEB"));
+                .claim("roles", List.of(role));
 
         if (email != null && !email.isEmpty()) {
             claimsBuilder.claim("email", email);

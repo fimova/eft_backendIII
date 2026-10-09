@@ -1,0 +1,6 @@
+CREATE TABLE clientes (
+    cliente_id NUMBER PRIMARY KEY,
+    nombre VARCHAR2(100) NOT NULL,
+    email VARCHAR2(150) NOT NULL,
+    estado VARCHAR2(20) DEFAULT 'ACTIVO' NOT NULL
+);

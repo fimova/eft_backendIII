@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 
+//escucha eventos de transacciones service
 @Component
 public class TransaccionCreadaListener {
 
@@ -31,39 +32,32 @@ public class TransaccionCreadaListener {
                                 TransaccionCreadaEvent.class);
 
                 Long transaccionId = event.getTransaccionId();
+                String servicioOrigen = "transacciones-service";
                 String tipoEvento = "TRANSACCION_CREADA";
 
                 System.out.println(
-                                "[EVENTO RECIBIDO] Transacción: "
-                                                + transaccionId);
+                                "[EVENTO RECIBIDO] Transacción: " + transaccionId);
 
-                // Verificar idempotencia
+                // Verificar si la transacción ya fue procesada correctamente.
                 boolean yaProcesado = eventoProcesadoRepository
-                                .existsByTransaccionIdAndTipoEventoAndEstado(
-                                                transaccionId,
+                                .existsByServicioOrigenAndTipoEventoAndReferenciaIdAndEstado(
+                                                servicioOrigen,
                                                 tipoEvento,
+                                                transaccionId,
                                                 "PROCESADO");
 
                 if (yaProcesado) {
-
                         System.out.println(
-                                        "[EVENTO DUPLICADO] Transacción "
-                                                        + transaccionId
-                                                        + " ya fue procesada. "
-                                                        + "Se ignora redelivery.");
-
+                                        "[EVENTO DUPLICADO] Transacción " + transaccionId
+                                                        + " ya fue procesada. Se ignora redelivery.");
                         return;
                 }
 
-                System.out.println(
-                                "[PROCESAMIENTO] Procesando transacción...");
+                System.out.println("[PROCESAMIENTO] Procesando transacción...");
 
                 try {
-
-                        // Actualmente el registro del evento representa el procesamiento realizado
-
-                        // SOLO PARA PRUEBAS DE REDELIVERY
-                        if (event.getTransaccionId().equals(99999L)) {
+                        // error intencional para comprobar el redelivery de JMS
+                        if (transaccionId.equals(99999L)) {
                                 throw new RuntimeException(
                                                 "Error intencional para prueba de procesamiento");
                         }
@@ -71,18 +65,17 @@ public class TransaccionCreadaListener {
                         EventoProcesado registro = new EventoProcesado();
 
                         registro.setTransaccionId(transaccionId);
+                        registro.setReferenciaId(transaccionId);
+                        registro.setServicioOrigen(servicioOrigen);
                         registro.setTipoEvento(tipoEvento);
-                        registro.setFechaProcesamiento(
-                                        LocalDateTime.now());
+                        registro.setFechaProcesamiento(LocalDateTime.now());
                         registro.setEstado("PROCESADO");
-                        registro.setDetalle(
-                                        "Transacción procesada correctamente");
+                        registro.setDetalle("Transacción procesada correctamente");
 
                         eventoProcesadoRepository.save(registro);
 
                         System.out.println(
-                                        "[PROCESAMIENTO EXITOSO] Transacción "
-                                                        + transaccionId
+                                        "[PROCESAMIENTO EXITOSO] Transacción " + transaccionId
                                                         + " procesada correctamente.");
 
                 } catch (Exception e) {
@@ -90,26 +83,21 @@ public class TransaccionCreadaListener {
                         EventoProcesado registroError = new EventoProcesado();
 
                         registroError.setTransaccionId(transaccionId);
+                        registroError.setServicioOrigen(servicioOrigen);
                         registroError.setTipoEvento(tipoEvento);
-                        registroError.setFechaProcesamiento(
-                                        LocalDateTime.now());
+                        registroError.setFechaProcesamiento(LocalDateTime.now());
                         registroError.setEstado("ERROR");
                         registroError.setDetalle(
-                                        "Error al procesar transacción: "
-                                                        + e.getMessage());
+                                        "Error al procesar transacción: " + e.getMessage());
 
                         eventoProcesadoRepository.save(registroError);
 
                         System.out.println(
-                                        "[ERROR DE PROCESAMIENTO] Transacción "
-                                                        + transaccionId
+                                        "[ERROR DE PROCESAMIENTO] Transacción " + transaccionId
                                                         + " no pudo ser procesada.");
+                        System.out.println("Motivo: " + e.getMessage());
 
-                        System.out.println(
-                                        "Motivo: " + e.getMessage());
-
-                        // permite que JMS considere fallido el procesamiento
-                        // y pueda realizar redelivery
+                        // relanzar el error para permitir que JMS intente redelivery
                         throw e;
                 }
         }
