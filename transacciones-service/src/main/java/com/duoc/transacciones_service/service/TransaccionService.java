@@ -38,18 +38,23 @@ public class TransaccionService {
 
         Transaccion transaccion = new Transaccion();
 
+        //obtener ID desde Oracle
         transaccion.setTransaccionId(
-                System.currentTimeMillis());
+                transaccionRepository.obtenerSiguienteTransaccionId());
 
+        //asignar datos
         transaccion.setFecha(request.getFecha());
         transaccion.setMonto(request.getMonto());
         transaccion.setTipo(request.getTipo());
 
+        //iniciar datos de anomalia
         transaccion.setAnomalia(false);
         transaccion.setMotivoAnomalia(null);
 
+        //guardar transacción en Oracle
         Transaccion transaccionGuardada = transaccionRepository.save(transaccion);
 
+        //publicar evento en ActiveMQ
         transaccionPublisher.publicarTransaccionCreada(
                 transaccionGuardada);
 

@@ -1,11 +1,9 @@
-name: semana8
+name: backend3-eft
 
 services:
-
   config-server:
     image: config-server:1.0
     pull_policy: never
-    container_name: config-server
     ports:
       - "8888:8888"
     environment:
@@ -16,33 +14,44 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 60s
+      start_period: 120s
     networks:
-      - semana8
+      - backend3-eft
 
   discovery-server:
     image: discovery-server:1.0
     pull_policy: never
-    container_name: discovery-server
     ports:
       - "8761:8761"
     networks:
-      - semana8
+      - backend3-eft
 
   activemq:
     image: symptoma/activemq:latest
     pull_policy: never
-    container_name: activemq
     ports:
       - "61616:61616"
       - "8161:8161"
     networks:
-      - semana8
+      - backend3-eft
+
+  database-init:
+    image: database-init:1.0
+    pull_policy: never
+    environment:
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_TNS_ADMIN: /wallet
+    volumes:
+      - "./database:/database:ro"
+      - "${DB_TNS_ADMIN}:/wallet:ro"
+    networks:
+      - backend3-eft
 
   auth-server:
     image: auth-server:1.0
     pull_policy: never
-    container_name: auth-server
     ports:
       - "9000:9000"
     environment:
@@ -58,12 +67,11 @@ services:
       discovery-server:
         condition: service_started
     networks:
-      - semana8
+      - backend3-eft
 
   transacciones-service:
     image: transacciones-service:1.0
     pull_policy: never
-    container_name: transacciones-service
     ports:
       - "8081:8081"
     environment:
@@ -88,16 +96,18 @@ services:
         condition: service_started
       auth-server:
         condition: service_started
+      database-init:
+        condition: service_completed_successfully
     networks:
-      - semana8
+      - backend3-eft
 
   mensajeria-service:
     image: mensajeria-service:1.0
     pull_policy: never
-    container_name: mensajeria-service
     ports:
       - "8082:8082"
     environment:
+      CONFIG_SERVER_URL: http://config-server:8888
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
       SPRING_CLOUD_CONFIG_URI: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:admin@discovery-server:8761/eureka/
@@ -115,10 +125,179 @@ services:
         condition: service_started
       activemq:
         condition: service_started
+      database-init:
+        condition: service_completed_successfully
     networks:
-      - semana8
+      - backend3-eft
+
+  batch-service:
+    image: batch-service:1.0
+    pull_policy: never
+    ports:
+      - "8084:8084"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_TNS_ADMIN: /wallet
+      SPRING_BATCH_JOB_ENABLED: "false"
+      SPRING_SQL_INIT_MODE: never
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+    volumes:
+      - "${DB_TNS_ADMIN}:/wallet:ro"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      database-init:
+        condition: service_completed_successfully
+    networks:
+      - backend3-eft
+
+  cuentas-service:
+    image: cuentas-service:1.0
+    pull_policy: never
+    ports:
+      - "8085:8085"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:admin@discovery-server:8761/eureka/
+      SPRING_ACTIVEMQ_BROKER_URL: tcp://activemq:61616
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://auth-server:9000/.well-known/jwks.json
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_TNS_ADMIN: /wallet
+    volumes:
+      - "${DB_TNS_ADMIN}:/wallet:ro"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+      activemq:
+        condition: service_started
+      auth-server:
+        condition: service_started
+      database-init:
+        condition: service_completed_successfully
+    networks:
+      - backend3-eft
+
+  clientes-service:
+    image: clientes-service:1.0
+    pull_policy: never
+    ports:
+      - "8086:8086"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:admin@discovery-server:8761/eureka/
+      SPRING_ACTIVEMQ_BROKER_URL: tcp://activemq:61616
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://auth-server:9000/.well-known/jwks.json
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_TNS_ADMIN: /wallet
+    volumes:
+      - "${DB_TNS_ADMIN}:/wallet:ro"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+      activemq:
+        condition: service_started
+      auth-server:
+        condition: service_started
+      database-init:
+        condition: service_completed_successfully
+    networks:
+      - backend3-eft
+
+  bff-web:
+    image: bff-web:1.0
+    pull_policy: never
+    ports:
+      - "8087:8087"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      SERVER_SSL_KEY_STORE: file:/app/certs/https.p12
+      HTTPS_KEYSTORE_PATH: file:/app/certs/https.p12
+      HTTPS_KEYSTORE_PASSWORD: ${HTTPS_KEYSTORE_PASSWORD:-https123}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:admin@discovery-server:8761/eureka/
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://auth-server:9000/.well-known/jwks.json
+    volumes:
+      - "./https.p12:/app/certs/https.p12:ro"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+      auth-server:
+        condition: service_started
+    networks:
+      - backend3-eft
+
+  bff-mobile:
+    image: bff-mobile:1.0
+    pull_policy: never
+    ports:
+      - "8088:8088"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      SERVER_SSL_KEY_STORE: file:/app/certs/https.p12
+      HTTPS_KEYSTORE_PATH: file:/app/certs/https.p12
+      HTTPS_KEYSTORE_PASSWORD: ${HTTPS_KEYSTORE_PASSWORD:-https123}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:admin@discovery-server:8761/eureka/
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://auth-server:9000/.well-known/jwks.json
+    volumes:
+      - "./https.p12:/app/certs/https.p12:ro"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+      auth-server:
+        condition: service_started
+    networks:
+      - backend3-eft
+
+  bff-atm:
+    image: bff-atm:1.0
+    pull_policy: never
+    ports:
+      - "8089:8089"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      SERVER_SSL_KEY_STORE: file:/app/certs/https.p12
+      HTTPS_KEYSTORE_PATH: file:/app/certs/https.p12
+      HTTPS_KEYSTORE_PASSWORD: ${HTTPS_KEYSTORE_PASSWORD:-https123}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:admin@discovery-server:8761/eureka/
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://auth-server:9000/.well-known/jwks.json
+    volumes:
+      - "./https.p12:/app/certs/https.p12:ro"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+      auth-server:
+        condition: service_started
+    networks:
+      - backend3-eft
 
 networks:
-  semana8:
-    name: semana8
+  backend3-eft:
+    name: backend3-eft
     driver: bridge

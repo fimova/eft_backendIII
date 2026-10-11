@@ -24,10 +24,8 @@ public class SecurityConfig {
 
                                                 .requestMatchers("/error")
                                                 .permitAll()
-
-                                                .requestMatchers(
-                                                                "/actuator/health",
-                                                                "/actuator/info")
+                                                
+                                                .requestMatchers("/actuator/**")
                                                 .permitAll()
 
                                                 .requestMatchers("/api/transacciones/**")

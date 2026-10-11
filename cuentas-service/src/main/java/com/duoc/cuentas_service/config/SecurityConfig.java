@@ -9,39 +9,34 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 public class SecurityConfig {
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http)
-            throws Exception {
+        @Bean
+        public SecurityFilterChain securityFilterChain(
+                        HttpSecurity http)
+                        throws Exception {
 
-        http
-                .csrf(csrf -> csrf.disable())
+                http
+                                .csrf(csrf -> csrf.disable())
 
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS))
+                                .sessionManagement(session -> session.sessionCreationPolicy(
+                                                SessionCreationPolicy.STATELESS))
 
-                .authorizeHttpRequests(auth -> auth
+                                .authorizeHttpRequests(auth -> auth
 
-                        .requestMatchers("/error")
-                        .permitAll()
+                                                .requestMatchers("/error")
+                                                .permitAll()
+                                                
+                                                .requestMatchers("/actuator/**")
+                                                .permitAll()
 
-                        .requestMatchers(
-                                "/actuator/health",
-                                "/actuator/info")
-                        .permitAll()
+                                                .requestMatchers("/api/cuentas/**")
+                                                .hasAnyRole("WEB", "MOBILE", "ATM")
 
-                        .requestMatchers("/api/cuentas/**")
-                        .hasAnyRole("WEB", "MOBILE", "ATM")
+                                                .anyRequest()
+                                                .authenticated())
 
-                        .anyRequest()
-                        .authenticated())
+                                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(
+                                                new JwtAuthenticationConverter())));
 
-                .oauth2ResourceServer(oauth2 ->
-                        oauth2.jwt(jwt ->
-                                jwt.jwtAuthenticationConverter(
-                                        new JwtAuthenticationConverter())));
-
-        return http.build();
-    }
+                return http.build();
+        }
 }

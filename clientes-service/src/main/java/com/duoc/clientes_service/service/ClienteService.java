@@ -52,14 +52,19 @@ public class ClienteService {
         cliente.setEmail(request.getEmail());
         cliente.setEstado(request.getEstado());
 
-        Cliente clienteGuardado = clienteRepository.save(cliente);
-
         ClienteCreadoEvent evento = new ClienteCreadoEvent(
-                clienteGuardado.getClienteId(),
+                cliente.getClienteId(),
                 LocalDateTime.now(),
                 "CLIENTE_CREADO");
 
+        // primero se publica el evento
+        // si JMS falla después de los reintentos, la excepción se propaga
+        // y no se ejecuta el guardado del cliente. Esto es para evitar conflicto 409
         clienteCreadoPublisher.publicarClienteCreado(evento);
+
+        // solo se persiste si la publicación terminó correctamente, de lo contrario el 409 impide
+        // que circuit breaker se active
+        Cliente clienteGuardado = clienteRepository.save(cliente);
 
         return convertirAResponse(clienteGuardado);
     }

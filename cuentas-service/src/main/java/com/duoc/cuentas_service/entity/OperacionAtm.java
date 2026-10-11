@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.springframework.data.domain.Persistable;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -14,10 +16,28 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-public class OperacionAtm {
+public class OperacionAtm implements Persistable<Long> {
+
+    @Transient
+    private boolean nueva = true;
+
+    @Override
+    public Long getId() {
+        return operacionId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return nueva;
+    }
+
+    @PostPersist
+    @PostUpdate
+    private void marcarComoExistente() {
+        nueva = false;
+    }
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "operacion_id")
     private Long operacionId;
 

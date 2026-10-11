@@ -1,8 +1,23 @@
+# Etapa 1: compilación
+FROM maven:3.9-eclipse-temurin-21 AS build
+
+WORKDIR /build
+
+COPY pom.xml .
+COPY src ./src
+
+RUN mvn -B -DskipTests package
+
+# Etapa 2: ejecución
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-COPY target/auth-server-0.0.1-SNAPSHOT.jar app.jar
+RUN useradd --system --uid 10001 appuser
+
+COPY --from=build --chown=10001:10001 /build/target/*.jar app.jar
+
+USER 10001:10001
 
 EXPOSE 9000
 
