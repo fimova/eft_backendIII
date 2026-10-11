@@ -53,10 +53,8 @@ eft_backendIII/
 | Cuentas Service | Gestiona las cuentas y las operaciones asociadas |
 | Clientes Service | Gestiona la información de los clientes |
 | Mensajería Service | Consume eventos JMS y registra los eventos procesados |
-| Batch Service | Ejecuta trabajos de procesamiento de intereses y estados y movimientos financieros a partir de
-archivos CSV |
-| Database Init | Comprueba y crea las tablas y secuencias de negocio que faltan en Oracle antes de iniciar los
-servicios dependientes |
+| Batch Service | Ejecuta trabajos de procesamiento de intereses y estados y movimientos financieros a partir de archivos CSV |
+| Database Init | Comprueba y crea las tablas y secuencias de negocio que faltan en Oracle antes de iniciar los servicios dependientes |
 | BFF Web | Expone operaciones destinadas al canal web |
 | BFF Mobile | Expone operaciones destinadas al canal móvil |
 | BFF ATM | Expone operaciones destinadas al canal de cajeros automáticos |

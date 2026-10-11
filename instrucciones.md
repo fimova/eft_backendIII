@@ -86,7 +86,7 @@ Verificar que la ruta configurada corresponda a la ubicación real del wallet y 
 
 ### 4.3. Certificado HTTPS
 
-Los BFF utilizan el almacén de certificados `https.p12`, montado en los contenedores en la ruta `/app/certs/https.p12`.
+Los BFF utilizan el almacén de certificados `https.p12`.
 
 El certificado se utiliza para habilitar HTTPS en los BFF. El navegador puede mostrar una advertencia de confianza 
 si el certificado no ha sido emitido por una autoridad certificadora reconocida.
@@ -218,6 +218,8 @@ Batch Service se ejecuta de forma independiente y no se registra en Eureka.
 ### 7.4. Autenticación
 
 Auth Server inicia el flujo de autenticación OAuth2 mediante GitHub. El canal se especifica en la ruta y se almacena en la sesión antes de redirigir al usuario al proveedor de autenticación.
+
+Base URL: `http://localhost:9000`
 
 | Método | Endpoint | Descripción |
 |---|---|---|
